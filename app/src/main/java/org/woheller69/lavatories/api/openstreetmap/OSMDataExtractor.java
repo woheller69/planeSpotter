@@ -46,7 +46,9 @@ public class OSMDataExtractor implements IDataExtractor {
             lavatory.setLongitude(json.getDouble("lon"));
             lavatory.setOperator(json.getString("flight"));
             lavatory.setAddress1(json.getString("desc"));
-            lavatory.setOpeningHours( json.getString("gs")+"\u2009kt "+json.getString("alt_geom")+"\u2009ft");
+            String alt = json.has("alt_geom") ? json.getString("alt_geom") : json.getString("alt_baro");
+            if (!alt.equals("ground")) alt = alt + "\u2009ft";
+            lavatory.setOpeningHours( json.getString("gs")+"\u2009kt "+ alt);
             if (json.has("track")) lavatory.setDistance(json.getDouble("track"));
             else if (json.has("true_heading")) lavatory.setDistance(json.getDouble("true_heading"));
             else if (json.has("mag_heading")) lavatory.setDistance(json.getDouble("mag_heading"));

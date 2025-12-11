@@ -27,16 +27,20 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Uri;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
+
+import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.api.IMapController;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.events.MapEventsReceiver;
+import org.osmdroid.events.MapListener;
+import org.osmdroid.events.ScrollEvent;
+import org.osmdroid.events.ZoomEvent;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
 import org.osmdroid.tileprovider.tilesource.XYTileSource;
 import org.osmdroid.util.GeoPoint;
@@ -69,10 +73,24 @@ public class CityAdapter extends RecyclerView.Adapter<CityAdapter.ViewHolder> {
     private Context context;
     private LocationManager locationManager;
     private static LocationListener myPositionListenerGPS;
-
+    private double zoom = -1;
+    IGeoPoint startPoint = null;
     public static final int OVERVIEW = 0;
     public static final int DETAILS = 1;
     public static final int LAVATORIES = 2;
+    private MapListener mapListener = new MapListener() {
+        @Override
+        public boolean onScroll(ScrollEvent event) {
+            startPoint = event.getSource().getProjection().getCurrentCenter();
+            return false;
+        }
+
+        @Override
+        public boolean onZoom(ZoomEvent event) {
+            zoom = event.getZoomLevel();
+            return false;
+        }
+    };
 
 //Adapter for CityFragment
     public CityAdapter(int cityID, int[] dataSetTypes, Context context) {
@@ -211,6 +229,7 @@ public class CityAdapter extends RecyclerView.Adapter<CityAdapter.ViewHolder> {
                 }
             }));
 
+            holder.map.removeMapListener(mapListener); //add again when everything is finished, otherwise erratic onScroll events.
             holder.map.setVisibility(View.VISIBLE);
             holder.map.setMultiTouchControls(true);
             holder.map.getZoomController().setVisibility(CustomZoomButtonsController.Visibility.NEVER);
@@ -229,8 +248,11 @@ public class CityAdapter extends RecyclerView.Adapter<CityAdapter.ViewHolder> {
             SQLiteHelper database = SQLiteHelper.getInstance(context.getApplicationContext());
 
             IMapController mapController = holder.map.getController();
-            mapController.setZoom(9d);
-            GeoPoint startPoint = new GeoPoint(database.getCityToWatch(cityID).getLatitude(), database.getCityToWatch(cityID).getLongitude());
+
+            if (zoom == -1) mapController.setZoom(9d);
+            else mapController.setZoom(zoom);
+
+            if (startPoint == null) startPoint = new GeoPoint(database.getCityToWatch(cityID).getLatitude(), database.getCityToWatch(cityID).getLongitude());
             mapController.setCenter(startPoint);
 
             CopyrightOverlay copyrightOverlay = new CopyrightOverlay(context);
@@ -244,12 +266,11 @@ public class CityAdapter extends RecyclerView.Adapter<CityAdapter.ViewHolder> {
                     Marker lavatoryMarker = new Marker(holder.map);
                     lavatoryMarker.setPosition(lavatoryPosition);
                     lavatoryMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                    lavatoryMarker.setIcon(ContextCompat.getDrawable(context, R.drawable.ic_plane_24dp));
                     if (lavatory.getDistance()!=-1) {
-                        lavatoryMarker.setIcon(ContextCompat.getDrawable(context, R.drawable.ic_plane_24dp));
                         lavatoryMarker.setRotation((float) (360.0 + 45 - (lavatory.getDistance())));
-                    } else {
-                        lavatoryMarker.setIcon(ContextCompat.getDrawable(context, R.drawable.baseline_star_rate_24));
                     }
+
                     lavatoryMarker.setInfoWindow(null);
                     lavatoryMarker.setId(lavatory.getUuid());
                     lavatoryMarker.setOnMarkerClickListener((marker, mapView) -> {
@@ -328,6 +349,8 @@ public class CityAdapter extends RecyclerView.Adapter<CityAdapter.ViewHolder> {
 
                 holder.recyclerViewHeader.setText(String.format("%s (%s)", context.getResources().getString(R.string.card_lavatories_heading), StringFormatUtils.formatTimeWithoutZone(context, updateTime)));
             }
+
+            holder.map.addMapListener(mapListener);
 
         }
         //No update for error needed
