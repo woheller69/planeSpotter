@@ -33,7 +33,7 @@ Or via this link (with fees)
 
 # PlaneSpotter
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="150"/> 
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" width="150"/> 
 
 PlaneSpotter shows aircrafts for your locations.
 
